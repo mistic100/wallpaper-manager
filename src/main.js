@@ -223,11 +223,12 @@ function normalizeConfig(rawConfig) {
   });
 
   const targetFolders = (config.targetFolders || [])
+    .filter((folder) => Boolean(folder))
     .filter((folder) => {
       if (!baseFolder) {
         return true;
       }
-      return isTargetFolderWithinBase(baseFolder, folder.folder);
+      return isTargetFolderWithinBase(baseFolder, folder);
     });
 
   return {

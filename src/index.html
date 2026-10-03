@@ -12,7 +12,7 @@
       <header class="topbar">
         <div class="title-wrap">
           <h1 class="filename-title"><span id="filename" class="filename-text">Loading…</span></h1>
-          <span id="filename-meta" class="meta-size">(unknown size)</span>
+          <span id="filename-meta" class="meta-size"></span>
         </div>
         <div class="topbar-actions">
           <button type="button" class="header-icon-button" id="config-button" aria-label="Open configuration" title="Open configuration">
@@ -21,7 +21,7 @@
           <button type="button" class="header-icon-button" id="refresh-button" aria-label="Refresh image list" title="Refresh image list">
             <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
           </button>
-          <div class="status-pill" id="status-pill">Ready</div>
+          <div class="status-pill" id="status-pill"></div>
         </div>
       </header>
 
@@ -74,7 +74,9 @@
       <div class="config-panel">
         <div class="config-header">
           <h2>Configuration</h2>
-          <button type="button" class="config-close-button" id="config-close-button" aria-label="Close configuration">×</button>
+          <button type="button" class="config-close-button" id="config-close-button" aria-label="Close configuration">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
         </div>
 
         <form id="config-form" class="config-form">

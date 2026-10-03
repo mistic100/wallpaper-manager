@@ -135,7 +135,7 @@ function renderConfigEditor() {
 
       const ratioLabel = document.createElement('label');
       ratioLabel.className = 'config-inline-label';
-      ratioLabel.textContent = 'Ratio:';
+      ratioLabel.textContent = 'Format ratio:';
 
       const ratioInput = document.createElement('input');
       ratioInput.type = 'text';
@@ -182,9 +182,7 @@ function renderConfigEditor() {
       addSizeButton.className = 'secondary-button';
       addSizeButton.textContent = 'Add size';
       addSizeButton.addEventListener('click', () => {
-        const ratio = parseRatioString(ratioInput.value) || format.ratio || [16, 10];
-        const nextSize = [Math.round(ratio[0] * 100), Math.round(ratio[1] * 100)];
-        state.config.formats[formatIndex].sizes.push(nextSize);
+        state.config.formats[formatIndex].sizes.push([]);
         renderConfigEditor();
       });
 
@@ -278,22 +276,13 @@ function renderConfigEditor() {
   const item = document.createElement('div');
   item.className = 'config-target-item';
 
-  state.config.targetFolders.forEach((target, targetIndex) => {
+  state.config.targetFolders.forEach((folderName, targetIndex) => {
     const row = document.createElement('div');
     row.className = 'config-target-row';
 
-    const idInput = document.createElement('input');
-    idInput.type = 'text';
-    idInput.value = target.id || '';
-    idInput.placeholder = 'Folder id';
-    idInput.addEventListener('input', () => {
-      state.config.targetFolders[targetIndex].id = idInput.value.trim();
-    });
-
     const folderInput = document.createElement('code');
     folderInput.className = 'config-target-path';
-    folderInput.textContent = target.folder || '';
-    folderInput.title = 'Target folder path';
+    folderInput.textContent = folderName;
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
@@ -306,7 +295,6 @@ function renderConfigEditor() {
       renderConfigEditor();
     });
 
-    row.appendChild(idInput);
     row.appendChild(folderInput);
     row.appendChild(removeButton);
     item.appendChild(row);
@@ -346,6 +334,32 @@ function pickBestSize(imageWidth, imageHeight, format) {
   for (const candidate of candidates) {
     const penalty = (candidate.width <= imageWidth && candidate.height <= imageHeight) ? 0 : 200_000;
     const score = penalty + Math.abs(candidate.width - imageWidth) + Math.abs(candidate.height - imageHeight);
+    if (score < bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+function pickBestMatchingSizeFromCrop(rect, format) {
+  const candidates = (format?.sizes || []).map(([width, height]) => ({ width, height }));
+  if (!rect || !candidates.length) {
+    return null;
+  }
+
+  const fitting = candidates.filter((candidate) => candidate.width <= rect.width && candidate.height <= rect.height);
+  const pool = fitting.length ? fitting : candidates;
+
+  let best = pool[0];
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of pool) {
+    const score = (candidate.width <= rect.width && candidate.height <= rect.height)
+      ? (rect.width - candidate.width) + (rect.height - candidate.height)
+      : Math.abs(candidate.width - rect.width) + Math.abs(candidate.height - rect.height);
+
     if (score < bestScore) {
       bestScore = score;
       best = candidate;
@@ -671,13 +685,13 @@ function renderSizeOptions() {
 
 function renderTargetButtons() {
   refs.targetButtons.innerHTML = '';
-  state.config.targetFolders.forEach((target) => {
+  state.config.targetFolders.forEach((folderName) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `target-button`;
-    button.textContent = target.id;
+    button.textContent = folderName;
     button.addEventListener('click', async () => {
-      await applyTargetAction(target);
+      await applyTargetAction(folderName);
     });
     refs.targetButtons.appendChild(button);
   });
@@ -738,7 +752,7 @@ async function deleteCurrentImage() {
   await showCurrentImage();
 }
 
-async function applyTargetAction(target) {
+async function applyTargetAction(targetFolderName) {
   const current = state.images[state.currentIndex];
   if (!current) return;
 
@@ -750,7 +764,7 @@ async function applyTargetAction(target) {
 
   const payload = {
     sourcePath: current.path,
-    targetFolder: target.folder,
+    targetFolder: targetFolderName,
     format: state.selectedFormat,
     size: state.selectedSize,
     crop
@@ -825,7 +839,7 @@ function attachHandlers() {
   });
 
   refs.addFormatButton.addEventListener('click', () => {
-    state.config.formats.push({ id: '', ratio: [], sizes: [] });
+    state.config.formats.push({ id: '', ratio: [], sizes: [[]] });
     showConfigMessage('', 'success');
     renderConfigEditor();
   });
@@ -845,17 +859,14 @@ function attachHandlers() {
     }
 
     const normalized = normalizeFolderKey(picked);
-    const exists = state.config.targetFolders.some((target) => normalizeFolderKey(target.folder) === normalized);
+    const folderName = normalized.split('/').filter(Boolean).pop() || normalized;
+    const exists = state.config.targetFolders.some((targetFolderName) => normalizeFolderKey(targetFolderName) === normalizeFolderKey(folderName));
     if (exists) {
       showConfigMessage('This target folder is already configured.', 'error');
       return;
     }
 
-    const basename = picked.split('/').filter(Boolean).pop() || picked;
-    state.config.targetFolders.push({
-      id: basename,
-      folder: picked
-    });
+    state.config.targetFolders.push(folderName);
     showConfigMessage('', 'success');
     renderConfigEditor();
   });
@@ -902,9 +913,8 @@ function attachHandlers() {
     }
 
     const seenTargetFolders = new Set();
-    for (const target of state.config.targetFolders) {
-      const cleanedId = String(target.id || '').trim();
-      const cleanedFolder = normalizeFolderKey(target.folder || '');
+    for (const targetFolderName of state.config.targetFolders) {
+      const cleanedFolder = normalizeFolderKey(targetFolderName || '');
       if (!cleanedFolder) continue;
       if (!isSafeTargetFolderPath(cleanedFolder)) {
         showConfigMessage('Target folders must stay inside the base folder and cannot go up a level.', 'error');
@@ -916,10 +926,7 @@ function attachHandlers() {
       }
       seenTargetFolders.add(cleanedFolder);
 
-      nextConfig.targetFolders.push({
-        id: cleanedId || cleanedFolder.split('/').filter(Boolean).pop() || 'target',
-        folder: cleanedFolder
-      });
+      nextConfig.targetFolders.push(cleanedFolder);
     }
 
     if (!nextConfig.formats.length) {
@@ -975,40 +982,58 @@ function attachHandlers() {
     const imageWidth = state.currentMeta.width;
     const imageHeight = state.currentMeta.height;
 
+    function constrainToRatio(width, height) {
+      let nextWidth = clampSize(width, 1, imageWidth);
+      let nextHeight = clampSize(height, 1, imageHeight);
+
+      if (nextWidth / nextHeight > ratio) {
+        nextWidth = clampSize(nextHeight * ratio, 1, imageWidth);
+      } else {
+        nextHeight = clampSize(nextWidth / ratio, 1, imageHeight);
+      }
+
+      return {
+        width: nextWidth,
+        height: nextHeight
+      };
+    }
+
     if (mode === 'n') {
       const anchorY = startRect.y + startRect.height;
       const height = clampSize(anchorY - pointerY, 1, anchorY);
-      const width = clampSize(height * ratio, 1, imageWidth);
-      const x = clampSize(startRect.x + (startRect.width - width) / 2, 0, imageWidth - width);
-      const y = clampSize(anchorY - height, 0, imageHeight - height);
-      return clampCropRect({ x, y, width, height }, imageWidth, imageHeight);
+      const { width, height: nextHeight } = constrainToRatio(height * ratio, height);
+      const centerX = startRect.x + startRect.width / 2;
+      const x = clampSize(centerX - width / 2, 0, imageWidth - width);
+      const y = clampSize(anchorY - nextHeight, 0, imageHeight - nextHeight);
+      return clampCropRect({ x, y, width, height: nextHeight }, imageWidth, imageHeight);
     }
 
     if (mode === 's') {
       const anchorY = startRect.y;
       const height = clampSize(pointerY - anchorY, 1, imageHeight - anchorY);
-      const width = clampSize(height * ratio, 1, imageWidth);
-      const x = clampSize(startRect.x + (startRect.width - width) / 2, 0, imageWidth - width);
-      const y = clampSize(anchorY, 0, imageHeight - height);
-      return clampCropRect({ x, y, width, height }, imageWidth, imageHeight);
+      const { width, height: nextHeight } = constrainToRatio(height * ratio, height);
+      const centerX = startRect.x + startRect.width / 2;
+      const x = clampSize(centerX - width / 2, 0, imageWidth - width);
+      const y = clampSize(anchorY, 0, imageHeight - nextHeight);
+      return clampCropRect({ x, y, width, height: nextHeight }, imageWidth, imageHeight);
     }
 
     if (mode === 'w') {
       const anchorX = startRect.x + startRect.width;
       const width = clampSize(anchorX - pointerX, 1, anchorX);
-      const height = clampSize(width / ratio, 1, imageHeight);
-      const x = clampSize(anchorX - width, 0, imageWidth - width);
+      const { width: nextWidth, height } = constrainToRatio(width, width / ratio);
+      const x = clampSize(anchorX - nextWidth, 0, imageWidth - nextWidth);
       const y = clampSize(startRect.y + (startRect.height - height) / 2, 0, imageHeight - height);
-      return clampCropRect({ x, y, width, height }, imageWidth, imageHeight);
+      return clampCropRect({ x, y, width: nextWidth, height }, imageWidth, imageHeight);
     }
 
     if (mode === 'e') {
       const anchorX = startRect.x;
       const width = clampSize(pointerX - anchorX, 1, imageWidth - anchorX);
-      const height = clampSize(width / ratio, 1, imageHeight);
-      const x = clampSize(anchorX, 0, imageWidth - width);
+      const { width: nextWidth, height } = constrainToRatio(width, width / ratio);
+      const x = clampSize(anchorX, 0, imageWidth - nextWidth);
       const y = clampSize(startRect.y + (startRect.height - height) / 2, 0, imageHeight - height);
-      return clampCropRect({ x, y, width, height }, imageWidth, imageHeight);
+      return clampCropRect({ x, y, width: nextWidth, height }, imageWidth, imageHeight);
     }
 
     const anchorX = mode.includes('e') ? startRect.x : startRect.x + startRect.width;
@@ -1016,13 +1041,9 @@ function attachHandlers() {
     let width = Math.abs(anchorX - pointerX);
     let height = Math.abs(anchorY - pointerY);
 
-    if (width / ratio > height) {
-      width = clampSize(width, 1, imageWidth);
-      height = clampSize(width / ratio, 1, imageHeight);
-    } else {
-      height = clampSize(height, 1, imageHeight);
-      width = clampSize(height * ratio, 1, imageWidth);
-    }
+    const constrained = constrainToRatio(width, height);
+    width = constrained.width;
+    height = constrained.height;
 
     let x = 0;
     let y = 0;
@@ -1095,6 +1116,12 @@ function attachHandlers() {
 
     const normalized = normalizeCropSelectionToFormat(state.cropRect, state.selectedFormat);
     state.cropRect = normalized;
+
+    const bestMatchingSize = pickBestMatchingSizeFromCrop(state.cropRect, state.selectedFormat);
+    if (bestMatchingSize) {
+      state.selectedSize = { width: bestMatchingSize.width, height: bestMatchingSize.height };
+      renderSizeOptions();
+    }
     updateCropBox();
   });
 
