@@ -369,6 +369,10 @@ h1 {
   color: #86efac;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .config-empty {
   color: var(--muted);
   padding: 8px 0;

@@ -134,12 +134,12 @@ async function getImageMetadata(filePath) {
 async function processImage({ sourcePath, targetFolder, format, size, crop }) {
   await ensureFolderExists(targetFolder);
 
-  const sourceName = path.basename(sourcePath, path.extname(sourcePath));
-  const outputPath = path.join(targetFolder, `${sourceName}-${format.id}-${size.width}x${size.height}.jpg`);
+  const outputPath = path.join(targetFolder, path.basename(sourcePath));
   const magick = findMagickExecutable();
 
   const cropCommand = [
     sourcePath,
+    '-strip',
     '-crop', `${Math.round(crop.width)}x${Math.round(crop.height)}+${Math.round(crop.x)}+${Math.round(crop.y)}`,
     '-resize', `${Math.round(size.width)}x${Math.round(size.height)}!`,
     '-quality', '95',

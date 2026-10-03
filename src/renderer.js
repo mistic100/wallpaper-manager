@@ -502,10 +502,7 @@ async function loadConfig() {
   if (state.images.length) {
     await showCurrentImage();
   } else {
-    refs.filename.textContent = 'No images found';
-    refs.filenameMeta.textContent = '(unknown size)';
-    refs.previewImage.src = '';
-    refs.previewImage.alt = 'No image available';
+    setEmptyQueueState();
     setStatus('No images in source folder', 'warn');
   }
 }
@@ -520,10 +517,7 @@ async function refreshQueue() {
   try {
     await loadQueue();
     if (!state.images.length) {
-      refs.filename.textContent = 'No images found';
-      refs.filenameMeta.textContent = '(unknown size)';
-      refs.previewImage.src = '';
-      refs.previewImage.alt = 'No image available';
+      setEmptyQueueState();
       setStatus('Queue refreshed', 'neutral');
       return;
     }
@@ -536,15 +530,22 @@ async function refreshQueue() {
   }
 }
 
+function setEmptyQueueState() {
+  refs.filename.textContent = 'No images found';
+  refs.filenameMeta.textContent = '';
+  refs.previewImage.src = '';
+  refs.previewImage.alt = 'No image available';
+  refs.cropBox.classList.add('hidden');
+}
+
 async function showCurrentImage() {
   if (!state.images.length) {
-    refs.filename.textContent = 'No images found';
-    refs.filenameMeta.textContent = '(unknown size)';
-    refs.previewImage.src = '';
-    refs.previewImage.alt = 'No image available';
+    setEmptyQueueState();
     setStatus('No images', 'warn');
     return;
   }
+
+  refs.cropBox.classList.remove('hidden');
 
   const current = state.images[state.currentIndex];
   const previewImage = refs.previewImage;
@@ -611,6 +612,7 @@ function renderFormatButtons() {
     button.addEventListener('click', async () => {
       state.selectedFormat = format;
       state.formatButtonsIndex = index;
+      state.selectedSize = null;
       renderFormatButtons();
       renderSizeOptions();
       buildCropSelection();
@@ -636,19 +638,20 @@ function renderSizeOptions() {
   }
 
   const currentBest = pickBestSize(state.currentMeta.width, state.currentMeta.height, state.selectedFormat);
-  state.selectedSize = currentBest;
+  const hasExplicitSelection = !!state.selectedSize && sizes.some(([width, height]) => width === state.selectedSize.width && height === state.selectedSize.height);
+
+  if (!hasExplicitSelection) {
+    state.selectedSize = currentBest;
+  }
 
   sizes.forEach(([width, height]) => {
     const isDisabled = width > state.currentMeta.width || height > state.currentMeta.height;
+    const isActive = !isDisabled && width === state.selectedSize.width && height === state.selectedSize.height;
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `size-button ${(!isDisabled && width === currentBest.width && height === currentBest.height) ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`;
+    button.className = `size-button ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`;
     button.textContent = `${width} × ${height}`;
     button.disabled = isDisabled;
-
-    if (!isDisabled && width === currentBest.width && height === currentBest.height) {
-      state.selectedSize = { width, height };
-    }
 
     button.addEventListener('click', () => {
       if (isDisabled) {
@@ -719,8 +722,11 @@ async function deleteCurrentImage() {
   state.images.splice(state.currentIndex, 1);
   if (!state.images.length) {
     refs.filename.textContent = 'No images left';
+    refs.filenameMeta.textContent = '(unknown size)';
     refs.previewImage.src = '';
     refs.previewImage.alt = 'No image available';
+    renderThumbnails();
+    refs.cropBox.classList.add('hidden');
     setStatus('Queue complete', 'success');
     return;
   }
@@ -757,8 +763,11 @@ async function applyTargetAction(target) {
     state.images.splice(state.currentIndex, 1);
     if (!state.images.length) {
       refs.filename.textContent = 'Queue complete';
+      refs.filenameMeta.textContent = '(unknown size)';
       refs.previewImage.src = '';
       refs.previewImage.alt = 'No image available';
+      renderThumbnails();
+      refs.cropBox.classList.add('hidden');
       return;
     }
 
