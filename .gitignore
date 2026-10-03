@@ -1,0 +1,4 @@
+/node_modules/
+/dist/
+/.yarn/
+/wallpaper-manager.config.json

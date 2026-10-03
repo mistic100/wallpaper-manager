@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallpaper Manager</title>
+    <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="title-wrap">
+          <h1 class="filename-title"><span id="filename" class="filename-text">Loading…</span></h1>
+          <span id="filename-meta" class="meta-size">(unknown size)</span>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="header-icon-button" id="config-button" aria-label="Open configuration" title="Open configuration">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="header-icon-button" id="refresh-button" aria-label="Refresh image list" title="Refresh image list">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+          </button>
+          <div class="status-pill" id="status-pill">Ready</div>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <div id="crop-stage" class="crop-stage">
+          <img id="preview-image" alt="Current image preview" />
+          <div id="crop-box" class="crop-box">
+            <div class="crop-outline"></div>
+            <div class="crop-handle handle-nw" data-handle="nw"></div>
+            <div class="crop-handle handle-ne" data-handle="ne"></div>
+            <div class="crop-handle handle-sw" data-handle="sw"></div>
+            <div class="crop-handle handle-se" data-handle="se"></div>
+            <div class="crop-handle handle-n" data-handle="n"></div>
+            <div class="crop-handle handle-s" data-handle="s"></div>
+            <div class="crop-handle handle-e" data-handle="e"></div>
+            <div class="crop-handle handle-w" data-handle="w"></div>
+          </div>
+        </div>
+
+        <aside class="controls-panel">
+          <div class="group-box">
+            <label class="group-label">Crop format</label>
+            <div id="format-buttons" class="button-grid"></div>
+          </div>
+
+          <div class="group-box">
+            <label class="group-label">Output size</label>
+            <div id="output-size" class="output-size-grid"></div>
+          </div>
+
+          <div class="group-box">
+            <label class="group-label">Target folder</label>
+            <div id="target-buttons" class="button-grid"></div>
+          </div>
+
+          <div class="action-row">
+            <button class="action skip" id="skip-button">Skip</button>
+            <button class="action danger" id="delete-button">Delete</button>
+            <button class="action secondary" id="edit-button">Edit</button>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="gallery-bar">
+        <div id="thumbnail-strip" class="thumbnail-strip"></div>
+      </footer>
+    </div>
+
+    <div id="config-modal" class="config-modal hidden" aria-hidden="true">
+      <div class="config-panel">
+        <div class="config-header">
+          <h2>Configuration</h2>
+          <button type="button" class="config-close-button" id="config-close-button" aria-label="Close configuration">×</button>
+        </div>
+
+        <form id="config-form" class="config-form">
+          <section class="config-section">
+            <div class="config-section-header">
+              <h3>Base folder</h3>
+            </div>
+            <div class="base-folder-row">
+              <input id="base-folder-input" type="text" readonly placeholder="Select a base folder" />
+              <button type="button" class="secondary-button" id="select-base-folder-button">Browse</button>
+            </div>
+          </section>
+
+          <section class="config-section">
+            <div class="config-section-header">
+              <h3>Formats</h3>
+              <button type="button" class="secondary-button" id="add-format-button">Add format</button>
+            </div>
+            <div id="format-config-list" class="config-list"></div>
+          </section>
+
+          <section class="config-section">
+            <div class="config-section-header">
+              <h3>Target folders</h3>
+              <button type="button" class="secondary-button" id="add-target-button">Add folder</button>
+            </div>
+            <div id="target-config-list" class="config-list"></div>
+          </section>
+
+          <p id="config-message" class="config-message" role="status" aria-live="polite"></p>
+
+          <div class="config-actions">
+            <button type="button" class="secondary-button" id="config-cancel-button">Cancel</button>
+            <button type="submit" class="primary-button" id="config-save-button">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
