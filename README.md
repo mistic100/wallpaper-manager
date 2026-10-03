@@ -3,7 +3,9 @@
 > [!NOTE]
 > **Disclaimer:** this is 99% vibe-coded
 
-A desktop workflow for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder.
+A Windows application for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder.
+
+![](./screenshot.png)
 
 ## Quick start
 

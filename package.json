@@ -1,7 +1,7 @@
 {
   "name": "wallpaper-manager",
   "version": "1.0.0",
-  "description": "A desktop workflow for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder.",
+  "description": "A Windows application for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder.",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "main": "src/main.js",
@@ -24,7 +24,9 @@
     "appId": "fr.strangeplanet.wallpaper-manager",
     "productName": "Wallpaper Manager",
     "asar": true,
-    "electronLanguages": ["en"],
+    "electronLanguages": [
+      "en"
+    ],
     "win": {
       "target": "portable",
       "icon": "src/icon.png"

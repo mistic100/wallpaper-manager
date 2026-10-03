@@ -4,7 +4,6 @@ const state = {
   currentIndex: 0,
   selectedFormat: null,
   selectedSize: null,
-  selectedTarget: null,
   currentMeta: null,
   cropRect: null,
   dragOrigin: null,
@@ -593,7 +592,6 @@ async function showCurrentImage() {
   const currentFormat = pickBestFormat(meta.width, meta.height, state.config.formats);
   state.selectedFormat = currentFormat;
   const formatIndex = state.config.formats.findIndex((format) => format.id === currentFormat.id);
-  state.selectedTarget = state.config.targetFolders[0] ?? null;
   state.formatButtonsIndex = formatIndex;
   renderFormatButtons();
   renderSizeOptions();
@@ -673,11 +671,9 @@ function renderTargetButtons() {
   state.config.targetFolders.forEach((target) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `target-button ${state.selectedTarget && state.selectedTarget.id === target.id ? 'active' : ''}`;
+    button.className = `target-button`;
     button.textContent = target.id;
     button.addEventListener('click', async () => {
-      state.selectedTarget = target;
-      renderTargetButtons();
       await applyTargetAction(target);
     });
     refs.targetButtons.appendChild(button);
