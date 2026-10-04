@@ -42,12 +42,27 @@ const refs = {
 function setStatus(message, tone = 'neutral') {
   refs.statusPill.textContent = message;
   const tones = {
-    neutral: 'rgba(59,130,246,0.12)',
-    success: 'rgba(34,197,94,0.12)',
-    warn: 'rgba(245,158,11,0.12)',
-    danger: 'rgba(239,68,68,0.12)'
+    neutral: {
+      background: 'rgba(59,130,246,0.12)',
+      border: 'rgba(96,165,250,0.5)'
+    },
+    success: {
+      background: 'rgba(34,197,94,0.12)',
+      border: 'rgba(74,222,128,0.5)'
+    },
+    warn: {
+      background: 'rgba(245,158,11,0.12)',
+      border: 'rgba(251,191,36,0.55)'
+    },
+    danger: {
+      background: 'rgba(239,68,68,0.12)',
+      border: 'rgba(248,113,113,0.55)'
+    }
   };
-  refs.statusPill.style.background = tones[tone] || tones.neutral;
+  const selected = tones[tone] || tones.neutral;
+  refs.statusPill.style.background = selected.background;
+  refs.statusPill.style.borderColor = selected.border;
+  refs.statusPill.style.color = selected.border;
 }
 
 function parseRatioString(value) {
@@ -547,8 +562,7 @@ async function refreshQueue() {
 function setEmptyQueueState() {
   refs.filename.textContent = 'No images found';
   refs.filenameMeta.textContent = '';
-  refs.previewImage.src = '';
-  refs.previewImage.alt = 'No image available';
+  refs.previewImage.style.display = 'none';
   refs.cropBox.classList.add('hidden');
 }
 
@@ -575,6 +589,7 @@ async function showCurrentImage() {
   });
 
   previewImage.src = cacheBustUrl(current.path);
+  refs.previewImage.style.display = '';
   previewImage.alt = current.name;
   await imageReady;
 
@@ -586,10 +601,8 @@ async function showCurrentImage() {
   if (!meta) {
     state.images.splice(state.currentIndex, 1);
     if (!state.images.length) {
-      refs.filename.textContent = 'No images left';
-      refs.filenameMeta.textContent = '(unknown size)';
-      refs.previewImage.src = '';
-      refs.previewImage.alt = 'No image available';
+      setEmptyQueueState();
+      renderThumbnails();
       setStatus('Skipped unreadable image', 'warn');
       return;
     }
@@ -735,12 +748,8 @@ async function deleteCurrentImage() {
   await window.electronAPI.deleteImage(current.path);
   state.images.splice(state.currentIndex, 1);
   if (!state.images.length) {
-    refs.filename.textContent = 'No images left';
-    refs.filenameMeta.textContent = '(unknown size)';
-    refs.previewImage.src = '';
-    refs.previewImage.alt = 'No image available';
+    setEmptyQueueState();
     renderThumbnails();
-    refs.cropBox.classList.add('hidden');
     setStatus('Queue complete', 'success');
     return;
   }
@@ -776,12 +785,9 @@ async function applyTargetAction(targetFolderName) {
     setStatus(`Saved: ${outputPath.split('\\').pop()}`, 'success');
     state.images.splice(state.currentIndex, 1);
     if (!state.images.length) {
-      refs.filename.textContent = 'Queue complete';
-      refs.filenameMeta.textContent = '(unknown size)';
-      refs.previewImage.src = '';
-      refs.previewImage.alt = 'No image available';
+      setEmptyQueueState();
       renderThumbnails();
-      refs.cropBox.classList.add('hidden');
+      setStatus('Queue completed', 'success');
       return;
     }
 
