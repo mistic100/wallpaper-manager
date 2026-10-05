@@ -7,7 +7,8 @@ const state = {
   currentMeta: null,
   cropRect: null,
   dragOrigin: null,
-  isDragging: false
+  isDragging: false,
+  isZoomed: false
 };
 
 const refs = {
@@ -471,6 +472,55 @@ function getImageDisplayBounds() {
   };
 }
 
+function applyScaledPreview() {
+  if (!state.currentMeta) {
+    return;
+  }
+
+  const stageRect = refs.cropStage.getBoundingClientRect();
+  const fit = fitImageToStage({
+    stageWidth: stageRect.width,
+    stageHeight: stageRect.height,
+    imageWidth: state.currentMeta.width,
+    imageHeight: state.currentMeta.height
+  });
+
+  refs.previewImage.style.width = `${fit.width}px`;
+  refs.previewImage.style.height = `${fit.height}px`;
+  refs.previewImage.style.left = `${fit.left}px`;
+  refs.previewImage.style.top = `${fit.top}px`;
+  refs.previewImage.style.maxWidth = 'none';
+  refs.previewImage.style.maxHeight = 'none';
+  refs.previewImage.style.transform = 'none';
+}
+
+function applyZoomPreview(pointerX, pointerY) {
+  if (!state.currentMeta) {
+    return;
+  }
+
+  const stageRect = refs.cropStage.getBoundingClientRect();
+  const currentRect = getImageDisplayBounds();
+  const zoomed = computeZoomPosition({
+    stageWidth: stageRect.width,
+    stageHeight: stageRect.height,
+    imageWidth: state.currentMeta.width,
+    imageHeight: state.currentMeta.height,
+    currentRect,
+    pointerX: pointerX - stageRect.left,
+    pointerY: pointerY - stageRect.top
+  });
+
+  refs.previewImage.style.width = `${zoomed.width}px`;
+  refs.previewImage.style.height = `${zoomed.height}px`;
+  refs.previewImage.style.left = `${zoomed.left}px`;
+  refs.previewImage.style.top = `${zoomed.top}px`;
+  refs.previewImage.style.maxWidth = 'none';
+  refs.previewImage.style.maxHeight = 'none';
+  refs.previewImage.style.transform = 'none';
+  state.isZoomed = true;
+}
+
 function cacheBustUrl(filePath) {
   return `${filePath}?v=${Date.now()}`;
 }
@@ -478,6 +528,11 @@ function cacheBustUrl(filePath) {
 function updateCropBox() {
   const image = refs.previewImage;
   if (!image || !state.cropRect || !state.currentMeta) {
+    return;
+  }
+
+  if (state.isZoomed) {
+    refs.cropBox.classList.add('hidden');
     return;
   }
 
@@ -497,6 +552,7 @@ function updateCropBox() {
   refs.cropBox.style.top = `${top}px`;
   refs.cropBox.style.width = `${width}px`;
   refs.cropBox.style.height = `${height}px`;
+  refs.cropBox.classList.remove('hidden');
 }
 
 function calculateActiveCropPixels() {
@@ -511,6 +567,65 @@ function calculateActiveCropPixels() {
     height: Math.round(state.cropRect.height)
   };
 }
+
+function fitImageToStage({ stageWidth, stageHeight, imageWidth, imageHeight }) {
+  const safeStageWidth = Math.max(1, Number(stageWidth) || 0);
+  const safeStageHeight = Math.max(1, Number(stageHeight) || 0);
+  const safeImageWidth = Math.max(1, Number(imageWidth) || 0);
+  const safeImageHeight = Math.max(1, Number(imageHeight) || 0);
+
+  const scale = Math.min(1, safeStageWidth / safeImageWidth, safeStageHeight / safeImageHeight);
+  const width = safeImageWidth * scale;
+  const height = safeImageHeight * scale;
+
+  return {
+    width,
+    height,
+    left: (safeStageWidth - width) / 2,
+    top: (safeStageHeight - height) / 2
+  };
+}
+
+function computeZoomPosition({
+  stageWidth,
+  stageHeight,
+  imageWidth,
+  imageHeight,
+  currentRect,
+  pointerX,
+  pointerY
+}) {
+  const safeStageWidth = Math.max(1, Number(stageWidth) || 0);
+  const safeStageHeight = Math.max(1, Number(stageHeight) || 0);
+  const safeImageWidth = Math.max(1, Number(imageWidth) || 0);
+  const safeImageHeight = Math.max(1, Number(imageHeight) || 0);
+
+  const currentLeft = Number(currentRect?.left) || 0;
+  const currentTop = Number(currentRect?.top) || 0;
+  const currentWidth = Math.max(1, Number(currentRect?.width) || 0);
+  const currentHeight = Math.max(1, Number(currentRect?.height) || 0);
+
+  const scaleX = currentWidth / safeImageWidth;
+  const scaleY = currentHeight / safeImageHeight;
+  const localPointerX = (Number(pointerX) - currentLeft) / scaleX;
+  const localPointerY = (Number(pointerY) - currentTop) / scaleY;
+
+  let left = Number(pointerX) - localPointerX;
+  let top = Number(pointerY) - localPointerY;
+
+  const minLeft = Math.min(0, safeStageWidth - safeImageWidth);
+  const minTop = Math.min(0, safeStageHeight - safeImageHeight);
+  left = Math.min(Math.max(left, minLeft), 0);
+  top = Math.min(Math.max(top, minTop), 0);
+
+  return {
+    width: safeImageWidth,
+    height: safeImageHeight,
+    left,
+    top
+  };
+}
+
 
 async function loadConfig() {
   const loaded = await window.electronAPI.loadConfig();
@@ -563,6 +678,7 @@ function setEmptyQueueState() {
   refs.filename.textContent = 'No images found';
   refs.filenameMeta.textContent = '';
   refs.previewImage.style.display = 'none';
+  state.isZoomed = false;
   refs.cropBox.classList.add('hidden');
 }
 
@@ -573,6 +689,7 @@ async function showCurrentImage() {
     return;
   }
 
+  state.isZoomed = false;
   refs.cropBox.classList.remove('hidden');
 
   const current = state.images[state.currentIndex];
@@ -616,6 +733,7 @@ async function showCurrentImage() {
   }
 
   state.currentMeta = meta;
+  applyScaledPreview();
 
   const currentFormat = pickBestFormat(meta.width, meta.height, state.config.formats);
   state.selectedFormat = currentFormat;
@@ -634,9 +752,14 @@ function renderFormatButtons() {
   state.config.formats.forEach((format, index) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `format-button ${state.selectedFormat && state.selectedFormat.id === format.id ? 'active' : ''}`;
+    button.className = `format-button ${state.selectedFormat && state.selectedFormat.id === format.id ? 'active' : ''} ${state.isZoomed ? 'disabled' : ''}`.trim();
     button.textContent = `${format.id}`;
+    button.disabled = state.isZoomed;
     button.addEventListener('click', async () => {
+      if (state.isZoomed) {
+        return;
+      }
+
       state.selectedFormat = format;
       state.formatButtonsIndex = index;
       state.selectedSize = null;
@@ -672,7 +795,7 @@ function renderSizeOptions() {
   }
 
   sizes.forEach(([width, height]) => {
-    const isDisabled = width > state.currentMeta.width || height > state.currentMeta.height;
+    const isDisabled = width > state.currentMeta.width || height > state.currentMeta.height || state.isZoomed;
     const isActive = !isDisabled && width === state.selectedSize.width && height === state.selectedSize.height;
     const button = document.createElement('button');
     button.type = 'button';
@@ -681,6 +804,10 @@ function renderSizeOptions() {
     button.disabled = isDisabled;
 
     button.addEventListener('click', () => {
+      if (state.isZoomed) {
+        return;
+      }
+
       if (isDisabled) {
         setStatus(`Upscale disabled: ${currentBest.width}×${currentBest.height}`, 'warn');
         return;
@@ -688,7 +815,6 @@ function renderSizeOptions() {
 
       state.selectedSize = { width, height };
       renderSizeOptions();
-      buildCropSelection();
       setStatus(`${width}×${height}`, 'neutral');
     });
 
@@ -701,9 +827,14 @@ function renderTargetButtons() {
   state.config.targetFolders.forEach((folderName) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `target-button`;
+    button.className = `target-button ${state.isZoomed ? 'disabled' : ''}`.trim();
     button.textContent = folderName;
+    button.disabled = state.isZoomed;
     button.addEventListener('click', async () => {
+      if (state.isZoomed) {
+        return;
+      }
+
       await applyTargetAction(folderName);
     });
     refs.targetButtons.appendChild(button);
@@ -1075,6 +1206,10 @@ function attachHandlers() {
   }
 
   refs.cropBox.addEventListener('pointerdown', (event) => {
+    if (state.isZoomed) {
+      return;
+    }
+
     const target = event.target.closest('.crop-handle');
     const stageRect = refs.cropStage.getBoundingClientRect();
     const imageBounds = getImageDisplayBounds();
@@ -1089,8 +1224,34 @@ function attachHandlers() {
     state.isDragging = true;
   });
 
+  refs.cropStage.addEventListener('contextmenu', (event) => {
+    if (!state.currentMeta) {
+      return;
+    }
+
+    event.preventDefault();
+    if (state.isZoomed) {
+      state.isZoomed = false;
+      refs.cropBox.classList.remove('hidden');
+      renderFormatButtons();
+      renderSizeOptions();
+      renderTargetButtons();
+      applyScaledPreview();
+      setStatus('Ready', 'success');
+      return;
+    }
+
+    state.isZoomed = true;
+    refs.cropBox.classList.add('hidden');
+    renderFormatButtons();
+    renderSizeOptions();
+    renderTargetButtons();
+    applyZoomPreview(event.clientX, event.clientY);
+    setStatus('100% zoom', 'neutral');
+  });
+
   refs.cropStage.addEventListener('pointermove', (event) => {
-    if (!state.isDragging || !state.dragOrigin || !state.currentMeta || !state.selectedFormat) {
+    if (state.isZoomed || !state.isDragging || !state.dragOrigin || !state.currentMeta || !state.selectedFormat) {
       return;
     }
 
@@ -1137,7 +1298,31 @@ function attachHandlers() {
   });
 
   window.addEventListener('resize', () => {
-    if (state.cropRect && state.currentMeta) {
+    if (!state.currentMeta) {
+      return;
+    }
+
+    if (state.isZoomed) {
+      const stageRect = refs.cropStage.getBoundingClientRect();
+      const currentRect = getImageDisplayBounds();
+      const zoomed = computeZoomPosition({
+        stageWidth: stageRect.width,
+        stageHeight: stageRect.height,
+        imageWidth: state.currentMeta.width,
+        imageHeight: state.currentMeta.height,
+        currentRect,
+        pointerX: stageRect.width / 2,
+        pointerY: stageRect.height / 2
+      });
+      refs.previewImage.style.width = `${zoomed.width}px`;
+      refs.previewImage.style.height = `${zoomed.height}px`;
+      refs.previewImage.style.left = `${zoomed.left}px`;
+      refs.previewImage.style.top = `${zoomed.top}px`;
+      return;
+    }
+
+    if (state.cropRect) {
+      applyScaledPreview();
       updateCropBox();
     }
   });
