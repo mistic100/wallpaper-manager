@@ -736,7 +736,9 @@ async function showCurrentImage() {
   applyScaledPreview();
 
   const currentFormat = pickBestFormat(meta.width, meta.height, state.config.formats);
+  const currentSize = pickBestSize(meta.width, meta.height, currentFormat);
   state.selectedFormat = currentFormat;
+  state.selectedSize = currentSize;
   const formatIndex = state.config.formats.findIndex((format) => format.id === currentFormat.id);
   state.formatButtonsIndex = formatIndex;
   renderFormatButtons();

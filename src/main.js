@@ -134,12 +134,16 @@ async function getImageMetadata(filePath) {
 async function processImage({ sourcePath, targetFolder, format, size, crop }) {
   await ensureFolderExists(targetFolder);
 
-  const outputPath = path.join(targetFolder, path.basename(sourcePath));
+  const sourceName = path.parse(sourcePath).name;
+  const outputPath = path.join(targetFolder, `${sourceName}.jpg`);
   const magick = findMagickExecutable();
 
   const cropCommand = [
     sourcePath,
     '-strip',
+    '-background', 'white',
+    '-alpha', 'remove',
+    '-alpha', 'off',
     '-crop', `${Math.round(crop.width)}x${Math.round(crop.height)}+${Math.round(crop.x)}+${Math.round(crop.y)}`,
     '-resize', `${Math.round(size.width)}x${Math.round(size.height)}!`,
     '-quality', '95',
@@ -379,10 +383,3 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-
-module.exports = {
-  ensureConfigFile,
-  pickBestFormat,
-  pickBestSize,
-  normalizeConfig
-};
