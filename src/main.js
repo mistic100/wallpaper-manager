@@ -205,6 +205,18 @@ function isTargetFolderWithinBase(baseFolder, targetFolder) {
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
 }
 
+function normalizeTargetFolderEntry(folderValue) {
+  if (typeof folderValue === 'string') {
+    return {
+      path: folderValue,
+      name: folderValue,
+      group: ''
+    };
+  } else {
+    return folderValue;
+  }
+}
+
 function normalizeConfig(rawConfig) {
   const config = rawConfig || {};
   const baseFolder = typeof config.baseFolder === 'string' ? config.baseFolder.trim() : '';
@@ -227,12 +239,13 @@ function normalizeConfig(rawConfig) {
   });
 
   const targetFolders = (config.targetFolders || [])
-    .filter((folder) => Boolean(folder))
+    .map((folder) => normalizeTargetFolderEntry(folder))
+    .filter(Boolean)
     .filter((folder) => {
       if (!baseFolder) {
         return true;
       }
-      return isTargetFolderWithinBase(baseFolder, folder);
+      return isTargetFolderWithinBase(baseFolder, folder.path);
     });
 
   return {

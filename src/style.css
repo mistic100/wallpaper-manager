@@ -145,14 +145,17 @@ h1 {
 }
 
 .config-panel {
+  display: flex;
+  flex-direction: column;
   width: min(1100px, 95vw);
-  max-height: 90vh;
+  height: 90vh;
   overflow: auto;
   background: rgba(15, 23, 42, 0.97);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 22px;
+  gap: 12px;
 }
 
 .config-header,
@@ -170,10 +173,6 @@ h1 {
 .config-section-header,
 .config-actions {
   justify-content: space-between;
-}
-
-.config-header {
-  margin-bottom: 18px;
 }
 
 .config-close-button {
@@ -203,9 +202,37 @@ h1 {
 }
 
 .config-form {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.config-tabs {
+  display: flex;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.config-tab {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.config-tab.active {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: var(--text);
 }
 
 .config-section {
@@ -213,6 +240,18 @@ h1 {
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.52);
   padding: 16px;
+}
+
+.config-tab-panel {
+  display: none;
+}
+
+.config-tab-panel.active {
+  display: block;
+}
+
+.config-tab-panel.hidden {
+  display: none;
 }
 
 .base-folder-row {
@@ -251,14 +290,16 @@ h1 {
   margin-top: 12px;
 }
 
-#format-config-list {
+#format-config-list,
+#target-config-list {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
 }
 
-#format-config-list .config-format-item {
+#format-config-list .config-format-item,
+#target-config-list .config-target-item {
   flex: 0 1 calc(50% - 6px);
   min-width: min(100%, 280px);
 }
@@ -269,10 +310,6 @@ h1 {
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.35);
   padding: 12px;
-}
-
-.config-target-item {
-  column-count: 3;
 }
 
 .config-format-row,
@@ -303,11 +340,37 @@ h1 {
   flex: 0 0 auto;
 }
 
-.config-target-row > * {
-  flex: 1 1 160px;
+.config-target-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.config-target-row > .config-delete-button {
+.config-target-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.config-target-meta-row {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.config-target-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.config-target-row > * {
+  min-width: 0;
+}
+
+.config-delete-button {
   flex: 0 0 38px;
   width: 38px;
   min-width: 38px;
@@ -318,7 +381,6 @@ h1 {
 }
 
 .config-target-path {
-  min-height: 40px;
   display: flex;
   align-items: center;
   background: transparent;
@@ -329,6 +391,17 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 1.1rem;
+}
+
+.config-target-item input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--text);
+  padding: 0 10px;
 }
 
 .config-format-separator {
@@ -522,12 +595,22 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  height: calc(100vh - 280px);
 }
 
 .group-box {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+#target-folder-group-box {
+  min-height: 0;
+}
+
+#target-buttons {
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .group-label {
@@ -550,6 +633,35 @@ h1 {
 }
 
 #target-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.target-folder-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.target-group-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 1em;
+
+  &::after, &::before {
+    content: '';
+    height: 1px;
+    background: var(--muted);
+    flex: 1;
+  }
+}
+
+.target-group-buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -561,7 +673,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: 40px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 12px;
   background: rgba(30, 41, 59, 0.8);

@@ -8,7 +8,8 @@ const state = {
   cropRect: null,
   dragOrigin: null,
   isDragging: false,
-  isZoomed: false
+  isZoomed: false,
+  configTab: 'baseFolder'
 };
 
 const refs = {
@@ -19,6 +20,8 @@ const refs = {
   configModal: document.getElementById('config-modal'),
   configCloseButton: document.getElementById('config-close-button'),
   configForm: document.getElementById('config-form'),
+  configTabs: Array.from(document.querySelectorAll('.config-tab')),
+  configPanels: Array.from(document.querySelectorAll('.config-tab-panel')),
   baseFolderInput: document.getElementById('base-folder-input'),
   selectBaseFolderButton: document.getElementById('select-base-folder-button'),
   addFormatButton: document.getElementById('add-format-button'),
@@ -123,12 +126,30 @@ function showConfigModal() {
   refs.configModal.classList.remove('hidden');
   refs.configModal.setAttribute('aria-hidden', 'false');
   refs.baseFolderInput.value = state.config.baseFolder || '';
+  setConfigTab('baseFolder');
+  showConfigMessage('');
   renderConfigEditor();
 }
 
 function hideConfigModal() {
   refs.configModal.classList.add('hidden');
   refs.configModal.setAttribute('aria-hidden', 'true');
+}
+
+function setConfigTab(tabName) {
+  state.configTab = tabName;
+
+  refs.configTabs.forEach((tab) => {
+    const isActive = tab.dataset.tab === tabName;
+    tab.classList.toggle('active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+
+  refs.configPanels.forEach((panel) => {
+    const isActive = panel.dataset.panel === tabName;
+    panel.classList.toggle('active', isActive);
+    panel.classList.toggle('hidden', !isActive);
+  });
 }
 
 function renderConfigEditor() {
@@ -170,6 +191,7 @@ function renderConfigEditor() {
       const deleteFormatButton = document.createElement('button');
       deleteFormatButton.type = 'button';
       deleteFormatButton.title = 'Delete format';
+      deleteFormatButton.className = 'config-delete-button';
       deleteFormatButton.setAttribute('aria-label', 'Delete format');
       deleteFormatButton.innerHTML = '<i class="fa-solid fa-trash-can" aria-hidden="true"></i>';
       deleteFormatButton.addEventListener('click', () => {
@@ -257,7 +279,7 @@ function renderConfigEditor() {
 
           const removeSizeButton = document.createElement('button');
           removeSizeButton.type = 'button';
-          removeSizeButton.className = 'remove-size-button';
+          removeSizeButton.className = 'config-delete-button';
           removeSizeButton.title = 'Remove size';
           removeSizeButton.setAttribute('aria-label', 'Remove size');
           removeSizeButton.innerHTML = '<i class="fa-solid fa-trash-can" aria-hidden="true"></i>';
@@ -289,16 +311,16 @@ function renderConfigEditor() {
     return;
   }
 
-  const item = document.createElement('div');
-  item.className = 'config-target-item';
+  state.config.targetFolders.forEach((targetFolder, targetIndex) => {
+    const item = document.createElement('div');
+    item.className = 'config-target-item';
 
-  state.config.targetFolders.forEach((folderName, targetIndex) => {
-    const row = document.createElement('div');
-    row.className = 'config-target-row';
+    const pathRow = document.createElement('div');
+    pathRow.className = 'config-target-row';
 
-    const folderInput = document.createElement('code');
-    folderInput.className = 'config-target-path';
-    folderInput.textContent = folderName;
+    const folderPath = document.createElement('code');
+    folderPath.className = 'config-target-path';
+    folderPath.textContent = targetFolder.path;
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
@@ -311,12 +333,46 @@ function renderConfigEditor() {
       renderConfigEditor();
     });
 
-    row.appendChild(folderInput);
-    row.appendChild(removeButton);
-    item.appendChild(row);
+    pathRow.appendChild(folderPath);
+    pathRow.appendChild(removeButton);
+    item.appendChild(pathRow);
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'config-target-meta-row';
+
+    const nameLabel = document.createElement('label');
+    nameLabel.className = 'config-target-label';
+    nameLabel.textContent = 'Name:';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = targetFolder.name;
+    nameInput.placeholder = 'Folder name';
+    nameInput.addEventListener('input', () => {
+      state.config.targetFolders[targetIndex].name = nameInput.value.trim();;
+    });
+
+    const groupLabel = document.createElement('label');
+    groupLabel.className = 'config-target-label';
+    groupLabel.textContent = 'Group:';
+
+    const groupInput = document.createElement('input');
+    groupInput.type = 'text';
+    groupInput.value = targetFolder.group || '';
+    groupInput.placeholder = 'Group';
+    groupInput.addEventListener('input', () => {
+      state.config.targetFolders[targetIndex].group = groupInput.value.trim();
+    });
+
+    metaRow.appendChild(nameLabel);
+    metaRow.appendChild(nameInput);
+    metaRow.appendChild(groupLabel);
+    metaRow.appendChild(groupInput);
+    item.appendChild(metaRow);
+
+    refs.targetConfigList.appendChild(item);
   });
 
-  refs.targetConfigList.appendChild(item);
 }
 
 function pickBestFormat(imageWidth, imageHeight, formats) {
@@ -826,20 +882,48 @@ function renderSizeOptions() {
 
 function renderTargetButtons() {
   refs.targetButtons.innerHTML = '';
-  state.config.targetFolders.forEach((folderName) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `target-button ${state.isZoomed ? 'disabled' : ''}`.trim();
-    button.textContent = folderName;
-    button.disabled = state.isZoomed;
-    button.addEventListener('click', async () => {
-      if (state.isZoomed) {
-        return;
-      }
+  const groupedFolders = new Map();
 
-      await applyTargetAction(folderName);
+  state.config.targetFolders.forEach((targetFolder) => {
+    const entry = targetFolder;
+    const groupName = entry.group?.trim() || 'ungrouped';
+    if (!groupedFolders.has(groupName)) {
+      groupedFolders.set(groupName, []);
+    }
+    groupedFolders.get(groupName).push(entry);
+  });
+
+  const groups = [...groupedFolders.entries()];
+  groups.forEach(([groupName, folders], groupIndex) => {
+    const groupWrapper = document.createElement('div');
+    groupWrapper.className = 'target-folder-group';
+
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'target-group-label';
+    groupLabel.textContent = groupName;
+    groupWrapper.appendChild(groupLabel);
+
+    const buttonList = document.createElement('div');
+    buttonList.className = 'target-group-buttons';
+
+    folders.forEach((targetFolder) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `target-button ${state.isZoomed ? 'disabled' : ''}`.trim();
+      button.textContent = targetFolder.name;
+      button.disabled = state.isZoomed;
+      button.addEventListener('click', async () => {
+        if (state.isZoomed) {
+          return;
+        }
+
+        await applyTargetAction(targetFolder.path);
+      });
+      buttonList.appendChild(button);
     });
-    refs.targetButtons.appendChild(button);
+
+    groupWrapper.appendChild(buttonList);
+    refs.targetButtons.appendChild(groupWrapper);
   });
 }
 
@@ -894,7 +978,7 @@ async function deleteCurrentImage() {
   await showCurrentImage();
 }
 
-async function applyTargetAction(targetFolderName) {
+async function applyTargetAction(targetFolderPath) {
   const current = state.images[state.currentIndex];
   if (!current) return;
 
@@ -906,7 +990,7 @@ async function applyTargetAction(targetFolderName) {
 
   const payload = {
     sourcePath: current.path,
-    targetFolder: targetFolderName,
+    targetFolder: targetFolderPath,
     format: state.selectedFormat,
     size: state.selectedSize,
     crop
@@ -970,6 +1054,12 @@ function attachHandlers() {
     hideConfigModal();
   });
 
+  refs.configTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      setConfigTab(tab.dataset.tab);
+    });
+  });
+
   refs.selectBaseFolderButton.addEventListener('click', async () => {
     const selected = await window.electronAPI.selectBaseFolder();
     if (!selected) return;
@@ -998,14 +1088,17 @@ function attachHandlers() {
     }
 
     const normalized = normalizeFolderKey(picked);
-    const folderName = normalized.split('/').filter(Boolean).pop() || normalized;
-    const exists = state.config.targetFolders.some((targetFolderName) => normalizeFolderKey(targetFolderName) === normalizeFolderKey(folderName));
+    const exists = state.config.targetFolders.some((targetFolder) => normalizeFolderKey(targetFolder.path) === normalized);
     if (exists) {
       showConfigMessage('This target folder is already configured.', 'error');
       return;
     }
 
-    state.config.targetFolders.push(folderName);
+    state.config.targetFolders.push({
+      path: normalized,
+      name: normalized,
+      group: ''
+    });
     showConfigMessage('', 'success');
     renderConfigEditor();
   });
@@ -1051,9 +1144,9 @@ function attachHandlers() {
       });
     }
 
-    const seenTargetFolders = new Set();
-    for (const targetFolderName of state.config.targetFolders) {
-      const cleanedFolder = normalizeFolderKey(targetFolderName || '');
+      const seenTargetFolders = new Set();
+    for (const targetFolder of state.config.targetFolders) {
+      const cleanedFolder = normalizeFolderKey(targetFolder.path || '');
       if (!cleanedFolder) continue;
       if (!isSafeTargetFolderPath(cleanedFolder)) {
         showConfigMessage('Target folders must stay inside the base folder and cannot go up a level.', 'error');
@@ -1065,7 +1158,10 @@ function attachHandlers() {
       }
       seenTargetFolders.add(cleanedFolder);
 
-      nextConfig.targetFolders.push(cleanedFolder);
+      nextConfig.targetFolders.push({
+        ...targetFolder,
+        path: cleanedFolder,
+      });
     }
 
     if (!nextConfig.formats.length) {
@@ -1080,7 +1176,6 @@ function attachHandlers() {
 
     try {
       state.config = await window.electronAPI.saveConfig(nextConfig);
-      showConfigMessage('Configuration saved.', 'success');
       hideConfigModal();
       await loadConfig();
     } catch (error) {

@@ -52,15 +52,15 @@
             <div id="output-size" class="output-size-grid"></div>
           </div>
 
-          <div class="group-box">
+          <div class="group-box" id="target-folder-group-box">
             <label class="group-label">Target folder</label>
             <div id="target-buttons" class="button-grid"></div>
           </div>
 
           <div class="action-row">
             <button class="action skip" id="skip-button">Skip</button>
-            <button class="action danger" id="delete-button">Delete</button>
             <button class="action secondary" id="edit-button">Edit</button>
+            <button class="action danger" id="delete-button">Delete</button>
           </div>
         </aside>
       </main>
@@ -79,8 +79,15 @@
           </button>
         </div>
 
+        <div class="config-tabs" role="tablist" aria-label="Configuration sections">
+          <button type="button" class="config-tab active" data-tab="baseFolder" role="tab" aria-selected="true">Base folder</button>
+          <button type="button" class="config-tab" data-tab="formats" role="tab" aria-selected="false">Formats</button>
+          <button type="button" class="config-tab" data-tab="targetFolders" role="tab" aria-selected="false">Target folders</button>
+        </div>
+
         <form id="config-form" class="config-form">
-          <section class="config-section">
+
+          <section class="config-section config-tab-panel active" data-panel="baseFolder">
             <div class="config-section-header">
               <h3>Base folder</h3>
             </div>
@@ -90,7 +97,7 @@
             </div>
           </section>
 
-          <section class="config-section">
+          <section class="config-section config-tab-panel" data-panel="formats">
             <div class="config-section-header">
               <h3>Formats</h3>
               <button type="button" class="secondary-button" id="add-format-button">Add format</button>
@@ -98,21 +105,21 @@
             <div id="format-config-list" class="config-list"></div>
           </section>
 
-          <section class="config-section">
+          <section class="config-section config-tab-panel" data-panel="targetFolders">
             <div class="config-section-header">
               <h3>Target folders</h3>
               <button type="button" class="secondary-button" id="add-target-button">Add folder</button>
             </div>
             <div id="target-config-list" class="config-list"></div>
           </section>
-
-          <p id="config-message" class="config-message" role="status" aria-live="polite"></p>
-
-          <div class="config-actions">
-            <button type="button" class="secondary-button" id="config-cancel-button">Cancel</button>
-            <button type="submit" class="primary-button" id="config-save-button">Save</button>
-          </div>
         </form>
+
+        <p id="config-message" class="config-message" role="status" aria-live="polite"></p>
+
+        <div class="config-actions">
+          <button type="button" class="secondary-button" id="config-cancel-button">Cancel</button>
+          <button type="submit" form="config-form" class="primary-button" id="config-save-button">Save</button>
+        </div>
       </div>
     </div>
 
