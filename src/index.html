@@ -123,6 +123,31 @@
       </div>
     </div>
 
+    <div id="overwrite-modal" class="overwrite-modal hidden" aria-hidden="true">
+      <div class="overwrite-panel">
+        <div class="overwrite-header">
+          <h2>Existing file found</h2>
+        </div>
+
+        <div class="overwrite-compare" aria-live="polite">
+          <div class="overwrite-side">
+            <div class="overwrite-side-label">New file</div>
+            <img id="overwrite-new-image" alt="Generated replacement preview" />
+          </div>
+          <div class="overwrite-side">
+            <div class="overwrite-side-label">Existing file</div>
+            <img id="overwrite-existing-image" alt="Current file in target folder" />
+          </div>
+        </div>
+
+        <div class="overwrite-actions">
+          <button type="button" class="secondary-button" id="overwrite-cancel-button">Cancel</button>
+          <button type="button" class="secondary-button" id="overwrite-keep-both-button">Keep both</button>
+          <button type="button" class="primary-button danger-button" id="overwrite-confirm-button">Overwrite</button>
+        </div>
+      </div>
+    </div>
+
     <script src="renderer.js"></script>
   </body>
 </html>

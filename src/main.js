@@ -131,14 +131,30 @@ async function getImageMetadata(filePath) {
   return { width, height };
 }
 
-async function processImage({ sourcePath, targetFolder, format, size, crop }) {
-  await ensureFolderExists(targetFolder);
-
+function buildTargetOutputPath(sourcePath, targetFolder) {
   const sourceName = path.parse(sourcePath).name;
-  const outputPath = path.join(targetFolder, `${sourceName}.jpg`);
-  const magick = findMagickExecutable();
+  return path.join(targetFolder, `${sourceName}.jpg`);
+}
 
-  const cropCommand = [
+async function findNextAvailableOutputPath(sourcePath, targetFolder) {
+  const baseOutputPath = buildTargetOutputPath(sourcePath, targetFolder);
+  const parsed = path.parse(baseOutputPath);
+  let candidate = baseOutputPath;
+  let index = 2;
+
+  while (true) {
+    try {
+      await fs.access(candidate);
+      candidate = path.join(parsed.dir, `${parsed.name} (${index})${parsed.ext}`);
+      index += 1;
+    } catch (error) {
+      return candidate;
+    }
+  }
+}
+
+function buildCropCommand({ sourcePath, outputPath, crop, size }) {
+  return [
     sourcePath,
     '-strip',
     '-background', 'white',
@@ -149,6 +165,12 @@ async function processImage({ sourcePath, targetFolder, format, size, crop }) {
     '-quality', '95',
     outputPath
   ];
+}
+
+async function processImage({ sourcePath, targetFolder, format, size, crop, outputPath }) {
+  await ensureFolderExists(targetFolder);
+  const magick = findMagickExecutable();
+  const cropCommand = buildCropCommand({ sourcePath, outputPath, crop, size });
 
   const result = spawnSync(magick, cropCommand, {
     shell: false,
@@ -163,8 +185,18 @@ async function processImage({ sourcePath, targetFolder, format, size, crop }) {
     const details = (result.stderr || result.stdout || '').toString();
     throw new Error(`ImageMagick failed while processing the file: ${details}`);
   }
+}
 
-  return outputPath;
+async function checkOutputFileExists({ baseFolder, sourcePath, targetFolder }) {
+  const cleanedTarget = path.isAbsolute(targetFolder) ? targetFolder : path.join(baseFolder, targetFolder);
+  const outputPath = buildTargetOutputPath(sourcePath, cleanedTarget);
+
+  try {
+    await fs.access(outputPath);
+    return { exists: true, outputPath };
+  } catch (error) {
+    return { exists: false, outputPath };
+  }
 }
 
 function createWindow() {
@@ -374,14 +406,37 @@ app.whenReady().then(async () => {
     return true;
   });
 
+  ipcMain.handle('check-output-file', async (_event, payload) => {
+    if (!config || !config.baseFolder) {
+      throw new Error('Configuration is missing. Please set a base folder first.');
+    }
+
+    return checkOutputFileExists({
+      baseFolder: config.baseFolder,
+      sourcePath: payload.sourcePath,
+      targetFolder: payload.targetFolder
+    });
+  });
+
   ipcMain.handle('apply-target', async (_event, payload) => {
     if (!config || !config.baseFolder) {
       throw new Error('Configuration is missing. Please set a base folder first.');
     }
 
-    const { sourcePath, targetFolder, format, size, crop } = payload;
+    const { sourcePath, targetFolder, format, size, crop, overwrite = false } = payload;
     const cleanedTarget = path.isAbsolute(targetFolder) ? targetFolder : path.join(config.baseFolder, targetFolder);
-    const outputPath = await processImage({ sourcePath, targetFolder: cleanedTarget, format, size, crop });
+    const baseOutputPath = buildTargetOutputPath(sourcePath, cleanedTarget);
+    const outputExists = await fs.access(baseOutputPath).then(() => true).catch(() => false);
+    const outputPath = !overwrite && outputExists ? await findNextAvailableOutputPath(sourcePath, cleanedTarget) : baseOutputPath;
+
+    await processImage({
+      sourcePath,
+      targetFolder: cleanedTarget,
+      format,
+      size,
+      crop,
+      outputPath
+    });
     await shell.trashItem(sourcePath);
     return outputPath;
   });

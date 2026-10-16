@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   waitForFileChange: (imagePath) => ipcRenderer.invoke('wait-for-file-change', imagePath),
   openEditor: (imagePath) => ipcRenderer.invoke('open-editor', imagePath),
   deleteImage: (imagePath) => ipcRenderer.invoke('delete-image', imagePath),
+  checkOutputFileExists: (payload) => ipcRenderer.invoke('check-output-file', payload),
   applyTarget: (payload) => ipcRenderer.invoke('apply-target', payload)
 });

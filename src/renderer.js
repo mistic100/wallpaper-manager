@@ -9,7 +9,8 @@ const state = {
   dragOrigin: null,
   isDragging: false,
   isZoomed: false,
-  configTab: 'baseFolder'
+  configTab: 'baseFolder',
+  pendingOverwritePayload: null
 };
 
 const refs = {
@@ -40,7 +41,13 @@ const refs = {
   cropBox: document.getElementById('crop-box'),
   skipButton: document.getElementById('skip-button'),
   deleteButton: document.getElementById('delete-button'),
-  editButton: document.getElementById('edit-button')
+  editButton: document.getElementById('edit-button'),
+  overwriteModal: document.getElementById('overwrite-modal'),
+  overwriteNewImage: document.getElementById('overwrite-new-image'),
+  overwriteExistingImage: document.getElementById('overwrite-existing-image'),
+  overwriteCancelButton: document.getElementById('overwrite-cancel-button'),
+  overwriteKeepBothButton: document.getElementById('overwrite-keep-both-button'),
+  overwriteConfirmButton: document.getElementById('overwrite-confirm-button')
 };
 
 function setStatus(message, tone = 'neutral') {
@@ -134,6 +141,20 @@ function showConfigModal() {
 function hideConfigModal() {
   refs.configModal.classList.add('hidden');
   refs.configModal.setAttribute('aria-hidden', 'true');
+}
+
+function showOverwriteModal({ newPreviewUrl, existingPreviewUrl }) {
+  refs.overwriteNewImage.src = newPreviewUrl;
+  refs.overwriteExistingImage.src = existingPreviewUrl;
+  refs.overwriteModal.classList.remove('hidden');
+  refs.overwriteModal.setAttribute('aria-hidden', 'false');
+}
+
+function hideOverwriteModal() {
+  refs.overwriteNewImage.removeAttribute('src');
+  refs.overwriteExistingImage.removeAttribute('src');
+  refs.overwriteModal.classList.add('hidden');
+  refs.overwriteModal.setAttribute('aria-hidden', 'true');
 }
 
 function setConfigTab(tabName) {
@@ -978,24 +999,7 @@ async function deleteCurrentImage() {
   await showCurrentImage();
 }
 
-async function applyTargetAction(targetFolderPath) {
-  const current = state.images[state.currentIndex];
-  if (!current) return;
-
-  const crop = calculateActiveCropPixels();
-  if (!crop) {
-    setStatus('No crop selected', 'warn');
-    return;
-  }
-
-  const payload = {
-    sourcePath: current.path,
-    targetFolder: targetFolderPath,
-    format: state.selectedFormat,
-    size: state.selectedSize,
-    crop
-  };
-
+async function finalizeTargetAction(payload) {
   try {
     setStatus('Processing…', 'neutral');
     const outputPath = await window.electronAPI.applyTarget(payload);
@@ -1013,6 +1017,43 @@ async function applyTargetAction(targetFolderPath) {
     }
 
     await showCurrentImage();
+  } catch (error) {
+    console.error(error);
+    setStatus('Processing failed', 'danger');
+  }
+}
+
+async function applyTargetAction(targetFolderPath) {
+  const current = state.images[state.currentIndex];
+  if (!current) return;
+
+  const crop = calculateActiveCropPixels();
+  if (!crop) {
+    setStatus('No crop selected', 'warn');
+    return;
+  }
+
+  const payload = {
+    sourcePath: current.path,
+    targetFolder: targetFolderPath,
+    format: state.selectedFormat,
+    size: state.selectedSize,
+    crop,
+    overwrite: false,
+  };
+
+  try {
+    const comparison = await window.electronAPI.checkOutputFileExists(payload);
+    if (!comparison.exists) {
+      await finalizeTargetAction(payload);
+      return;
+    }
+
+    state.pendingOverwritePayload = payload;
+    showOverwriteModal({
+      newPreviewUrl: current.path,
+      existingPreviewUrl: comparison.outputPath
+    });
   } catch (error) {
     console.error(error);
     setStatus('Processing failed', 'danger');
@@ -1205,6 +1246,35 @@ function attachHandlers() {
 
   refs.editButton.addEventListener('click', async () => {
     await openCurrentInPhotoshop();
+  });
+
+  refs.overwriteCancelButton.addEventListener('click', () => {
+    state.pendingOverwritePayload = null;
+    hideOverwriteModal();
+  });
+
+  refs.overwriteKeepBothButton.addEventListener('click', async () => {
+    if (!state.pendingOverwritePayload) {
+      hideOverwriteModal();
+      return;
+    }
+
+    const payload = { ...state.pendingOverwritePayload, overwrite: false };
+    state.pendingOverwritePayload = null;
+    hideOverwriteModal();
+    await finalizeTargetAction(payload);
+  });
+
+  refs.overwriteConfirmButton.addEventListener('click', async () => {
+    if (!state.pendingOverwritePayload) {
+      hideOverwriteModal();
+      return;
+    }
+
+    const payload = { ...state.pendingOverwritePayload, overwrite: true };
+    state.pendingOverwritePayload = null;
+    hideOverwriteModal();
+    await finalizeTargetAction(payload);
   });
 
   function clampSize(value, min, max) {
