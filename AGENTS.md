@@ -26,8 +26,9 @@ The main screen has four parts:
 - large image visualisation area with interractive cropping tools (Photoshop like) which preserve aspect ratio
 - form allowing to select crop format, output size, target folder and skip, delete, edit buttons
 - bottom thumbnails strip of images to process
+- A modal warns the user if the target folder already contains a file with the same name
 
-The settings modal:
+The settings modal has three tabs:
 - change scanned folder
 - configure crop formats and respective output sizes
 - list target folders
@@ -43,8 +44,8 @@ The settings modal:
 ## Core configuration
 The app stores a config object with:
 - `baseFolder`: root folder scanned for source images
-- `formats`: array of aspect-ratio formats, each with `id`, `ratio`, and `sizes`
-- `targetFolders`: destinations under the base folder; these must remain inside the base folder hierarchy
+- `formats`: array of aspect-ratio formats, each with `id`, `ratio` and `sizes`
+- `targetFolders`: destinations under the base folder, each with `path`, `name` and `group`
 
 Rules:
 - target folders cannot traverse upward outside the base folder
@@ -57,6 +58,7 @@ Rules:
 - Target folders are configured from the app and must remain child paths relative to the base folder.
 - Images are processed through ImageMagick CLI calls with `shell: false` for reliability.
 - Output files should preserve the original input filename unless a deliberate naming rule is introduced later.
+- Output files are always in JPEG format, whatever is the input format.
 - Keep the application portable and avoid assuming a fixed installation path.
 - Protect user-facing config validation and avoid silently discarding invalid user selections.
 - Metadata should be stripped from output images using ImageMagick `-strip`.
@@ -68,3 +70,12 @@ When working on this app:
 3. Keep changes consistent with the Windows/Electron environment.
 4. Preserve the single-screen workflow and compact config UX.
 5. Prefer explicit validation messages over silent failures.
+
+## Frontend
+
+The renderer is built from Lit web components. `wp-app` coordinates the application
+and communicates with Electron through the preload API; the top bar, crop stage,
+controls sidebar, gallery, configuration dialog, overwrite dialog, and reusable
+`wp-button` are separate modules under `src/components/`, with each component's
+styles declared in its Lit `static styles` property. `src/style.css` contains
+shared design tokens and page-level styles.

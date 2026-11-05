@@ -9,10 +9,8 @@ A Windows application for scanning a source folder, reviewing images, choosing a
 
 ## Quick start
 
-1. Install dependencies:
-   yarn install
-2. Start the app:
-   yarn start
+1. Install dependencies: `yarn install`
+2. Start the app: `yarn start`
 
 ## Configuration
 

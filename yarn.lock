@@ -137,10 +137,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fortawesome/fontawesome-free@npm:^7.0.1":
-  version: 7.3.1
-  resolution: "@fortawesome/fontawesome-free@npm:7.3.1"
-  checksum: 10c0/85b70ea64e69b9635ff0b949871acaaf0e6c6fd41860b8a78a5067123a42dd71144f7f7feea7aee013a485166ee8bf8ee3aafb15146dc0f55512d07015adddee
+"@gyeonghokim/lucide-lit@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "@gyeonghokim/lucide-lit@npm:1.4.0"
+  peerDependencies:
+    lit: ^3.0.0
+  checksum: 10c0/c79f9334c0dcba579ce6c680ba2bf71c78ea31ce73e34a924511f7c6f9c906ab1da2461bb29c77f77b720ce7513711c9452a814dd39a616d57a64fdf1edb45d0
   languageName: node
   linkType: hard
 
@@ -150,6 +152,22 @@ __metadata:
   dependencies:
     minipass: "npm:^7.0.4"
   checksum: 10c0/c25b6dc1598790d5b55c0947a9b7d111cfa92594db5296c3b907e2f533c033666f692a3939eadac17b1c7c40d362d0b0635dc874cbfe3e70db7c2b07cc97a5d2
+  languageName: node
+  linkType: hard
+
+"@lit-labs/ssr-dom-shim@npm:^1.5.0":
+  version: 1.6.0
+  resolution: "@lit-labs/ssr-dom-shim@npm:1.6.0"
+  checksum: 10c0/deffcfd765d268820beef600a1c1cf9d3cf1a5cb4bbe7e80843796ff33d1a122f4e5651ef4a44b33d36e5fa6538e6ee87a95b9d40b4a26cabf3c35b45194c87a
+  languageName: node
+  linkType: hard
+
+"@lit/reactive-element@npm:^2.1.0":
+  version: 2.1.2
+  resolution: "@lit/reactive-element@npm:2.1.2"
+  dependencies:
+    "@lit-labs/ssr-dom-shim": "npm:^1.5.0"
+  checksum: 10c0/557069ce6ebbbafb1140e1e0a25ce73d3501bf455cda231d42bb131baa9065c54b6b7ca1655507eede397decd7ddde16c84192cb72a07d4edf41d54e07725933
   languageName: node
   linkType: hard
 
@@ -316,6 +334,13 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/a58ba341cb9e7d74f71810a88862da7b2a6fa42e2a1fc0ce40498f6ea1d44382f0640117057da779f74c47039f7166bf48fad02dc876f94e005c7afa50f5e129
+  languageName: node
+  linkType: hard
+
+"@types/trusted-types@npm:^2.0.2":
+  version: 2.0.7
+  resolution: "@types/trusted-types@npm:2.0.7"
+  checksum: 10c0/4c4855f10de7c6c135e0d32ce462419d8abbbc33713b31d294596c0cc34ae1fa6112a2f9da729c8f7a20707782b0d69da3b1f8df6645b0366d08825ca1522e0c
   languageName: node
   linkType: hard
 
@@ -1542,6 +1567,37 @@ __metadata:
   languageName: node
   linkType: hard
 
+"lit-element@npm:^4.2.0":
+  version: 4.2.2
+  resolution: "lit-element@npm:4.2.2"
+  dependencies:
+    "@lit-labs/ssr-dom-shim": "npm:^1.5.0"
+    "@lit/reactive-element": "npm:^2.1.0"
+    lit-html: "npm:^3.3.0"
+  checksum: 10c0/114ab5837f1f9e03a30b1ed1c055fa0e31f01e444464e5ab0453ef88be12d778508235533267c42614d323e3048ee58f865b5c612948a53bd6219abca404c710
+  languageName: node
+  linkType: hard
+
+"lit-html@npm:^3.3.0":
+  version: 3.3.3
+  resolution: "lit-html@npm:3.3.3"
+  dependencies:
+    "@types/trusted-types": "npm:^2.0.2"
+  checksum: 10c0/84e57314412ff385cc67fc482d26b77057370e2cfe3c6495cc45f692bdad840d5ed0519ddddcfae1d043bb098c66daa7e807593d5a21ac72094da14274497879
+  languageName: node
+  linkType: hard
+
+"lit@npm:^3.3.3":
+  version: 3.3.3
+  resolution: "lit@npm:3.3.3"
+  dependencies:
+    "@lit/reactive-element": "npm:^2.1.0"
+    lit-element: "npm:^4.2.0"
+    lit-html: "npm:^3.3.0"
+  checksum: 10c0/11b6175ebffce92f4cf835ddd8a198d49707c27f34b0a7c538d2cb294f6c2fb7ff40aabd3589fcf0c2ed162404faaf2bb7c966fad9024bb9e02d013e2d5aa0b5
+  languageName: node
+  linkType: hard
+
 "lodash@npm:^4.17.15":
   version: 4.18.1
   resolution: "lodash@npm:4.18.1"
@@ -2352,9 +2408,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "wallpaper-manager@workspace:."
   dependencies:
-    "@fortawesome/fontawesome-free": "npm:^7.0.1"
+    "@gyeonghokim/lucide-lit": "npm:^1.4.0"
     electron: "npm:^44.5.1"
     electron-builder: "npm:^26.15.3"
+    lit: "npm:^3.3.3"
   languageName: unknown
   linkType: soft
 
