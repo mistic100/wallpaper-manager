@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Disclaimer:** this is 99% vibe-coded
 
-A Windows application for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder.
+A Windows application for scanning a source folder, reviewing images, choosing a crop/size preset, recompressing to JPEG, and moving the file to a target folder. Shift-select multiple images to arrange them side by side as a collage.
 
 ![](./screenshot.png)
 
@@ -23,5 +23,6 @@ The configuration file defines:
 
 - The app scans only the configured folder, non-recursively.
 - Images are processed with ImageMagick, which is expected to be available on the PATH.
+- Merge collages use equal-width columns in selection order. Drag an image vertically within its column; the collage is named after the first selected image.
 - Deletes go to the Windows recycle bin.
 - The Edit tries to open the file in Adobe Photoshop if it is installed.

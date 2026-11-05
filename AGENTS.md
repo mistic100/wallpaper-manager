@@ -7,7 +7,7 @@ The app workflow is:
 - select a base source folder
 - scan all supported image files inside that folder
 - inspect each image one by one
-- crop a selection to a target aspect ratio
+- crop a selection to a target aspect ratio, or shift-select images to compose a horizontal collage
 - resize to a selected output size
 - send the processed image to one of the configured target folders
 - optionally delete or skip the original source image
@@ -15,15 +15,17 @@ The app workflow is:
 ## App structure
 - `src/main.js`: Electron main process; config loading, target-folder validation, ImageMagick calls, IPC handlers
 - `src/preload.js`: exposes the safe Electron bridge to the renderer
-- `src/renderer.js`: UI logic, crop interaction, size selection, target actions, queue management
+- `src/app.js`: main Lit component and Electron communication
+- `src/components/`: reusable Lit web components and shared component base
 - `src/index.html`: app shell and configuration modal layout
-- `src/style.css`: styling for the app and config UI
+- `src/style.css`: shared design tokens and page-level styles
 - `wallpaper-manager.config.json`: persisted app configuration
 
 ## Application UI
 The main screen has four parts:
 - top header with current image name and size, status pill an global action buttons
 - large image visualisation area with interractive cropping tools (Photoshop like) which preserve aspect ratio
+- shift-selecting two or more thumbnails replaces the crop stage with a merge stage of movable, equal-width image columns
 - form allowing to select crop format, output size, target folder and skip, delete, edit buttons
 - bottom thumbnails strip of images to process
 - A modal warns the user if the target folder already contains a file with the same name
@@ -37,7 +39,7 @@ The settings modal has three tabs:
 - Desktop runtime: Electron
 - Image processing: ImageMagick (`magick` or `convert` on PATH)
 - Package manager: Yarn
-- Icons: FontAwesome
+- Icons: Lucide Lit components
 - Target OS: Windows
 - Portable usage is expected; no install-time setup beyond ImageMagick and the app runtime
 
@@ -65,17 +67,23 @@ Rules:
 
 ## Typical workflow for changes
 When working on this app:
-1. Check the relevant logic in `src/renderer.js` for UI state changes.
+1. Check the relevant logic in `src/app.js` for UI state and Electron communication.
 2. Check `src/main.js` for validation and ImageMagick behavior.
 3. Keep changes consistent with the Windows/Electron environment.
 4. Preserve the single-screen workflow and compact config UX.
 5. Prefer explicit validation messages over silent failures.
+6. Do not run "yarn build" (too long)
 
 ## Frontend
 
-The renderer is built from Lit web components. `wp-app` coordinates the application
-and communicates with Electron through the preload API; the top bar, crop stage,
-controls sidebar, gallery, configuration dialog, overwrite dialog, and reusable
-`wp-button` are separate modules under `src/components/`, with each component's
-styles declared in its Lit `static styles` property. `src/style.css` contains
-shared design tokens and page-level styles.
+The frontend is composed of separate web components built with Lit. Each app
+component, including `wp-app`, must extend `ComponentElement` from
+`src/components/shared.js`. `wp-app` owns communication with Electron through
+the preload API; the top bar, crop stage, merge stage, controls sidebar, gallery, configuration
+dialog, overwrite dialog, and reusable `wp-button` are separate modules under
+`src/components/`. Keep component-specific styles in Lit `static styles`
+properties; `src/style.css` is for shared design tokens and page-level styles.
+
+Lucide icons are available as individual Lit components. Import only the icons
+needed from the `@lucide/icons` alias (for example, `import '@lucide/icons/settings.js';`) and
+use their custom elements in component templates.

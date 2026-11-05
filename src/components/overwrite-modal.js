@@ -4,6 +4,7 @@ import { ComponentElement, emit } from './shared.js';
 export class WpOverwriteModal extends ComponentElement {
   static properties = {
     open: { type: Boolean, reflect: true },
+    mergeMode: { type: Boolean, attribute: 'merge-mode' },
     newPreview: { type: String, attribute: 'new-preview' },
     existingPreview: { type: String, attribute: 'existing-preview' }
   };
@@ -31,12 +32,14 @@ export class WpOverwriteModal extends ComponentElement {
       background: rgba(15, 23, 42, 0.97);
       box-shadow: var(--shadow);
     }
+    .overwrite-panel.merge-mode { width: min(600px, 92vw); }
     .overwrite-header h2 { margin: 0; }
     .overwrite-compare {
       display: grid;
       grid-template-columns: repeat(2, minmax(220px, 1fr));
       gap: var(--block-gap);
     }
+    .overwrite-compare.merge-mode { grid-template-columns: minmax(0, 1fr); }
     .overwrite-side {
       display: flex;
       flex-direction: column;
@@ -67,6 +70,7 @@ export class WpOverwriteModal extends ComponentElement {
   constructor() {
     super();
     this.open = false;
+    this.mergeMode = false;
     this.newPreview = '';
     this.existingPreview = '';
   }
@@ -74,13 +78,15 @@ export class WpOverwriteModal extends ComponentElement {
   render() {
     return html`
       <div class="overwrite-modal ${this.open ? '' : 'hidden'}" aria-hidden=${String(!this.open)}>
-        <div class="overwrite-panel" role="dialog" aria-modal="true" aria-labelledby="overwrite-title">
-          <div class="overwrite-header"><h2 id="overwrite-title">Existing file found</h2></div>
-          <div class="overwrite-compare" aria-live="polite">
-            <div class="overwrite-side">
-              <div class="overwrite-side-label">New file</div>
-              <img src=${this.newPreview} alt="Generated replacement preview" />
-            </div>
+        <div class="overwrite-panel ${this.mergeMode ? 'merge-mode' : ''}" role="dialog" aria-modal="true" aria-labelledby="overwrite-title">
+          <div class="overwrite-header"><h2 id="overwrite-title">${this.mergeMode ? 'Existing collage found' : 'Existing file found'}</h2></div>
+          <div class="overwrite-compare ${this.mergeMode ? 'merge-mode' : ''}" aria-live="polite">
+            ${this.mergeMode ? '' : html`
+              <div class="overwrite-side">
+                <div class="overwrite-side-label">New file</div>
+                <img src=${this.newPreview} alt="Generated replacement preview" />
+              </div>
+            `}
             <div class="overwrite-side">
               <div class="overwrite-side-label">Existing file</div>
               <img src=${this.existingPreview} alt="Current file in target folder" />
@@ -89,8 +95,10 @@ export class WpOverwriteModal extends ComponentElement {
           <div class="overwrite-actions">
             <wp-button color="neutral"
               @click=${() => emit(this, 'overwrite-cancelled')}>Cancel</wp-button>
-            <wp-button color="neutral"
-              @click=${() => emit(this, 'overwrite-keep-both')}>Keep both</wp-button>
+            ${this.mergeMode ? '' : html`
+              <wp-button color="neutral"
+                @click=${() => emit(this, 'overwrite-keep-both')}>Keep both</wp-button>
+            `}
             <wp-button color="danger"
               @click=${() => emit(this, 'overwrite-confirmed')}>Overwrite</wp-button>
           </div>

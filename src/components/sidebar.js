@@ -9,6 +9,7 @@ export class WpSidebar extends ComponentElement {
     size: { attribute: false },
     meta: { attribute: false },
     targets: { attribute: false },
+    mergeMode: { type: Boolean, attribute: 'merge-mode' },
     disabled: { type: Boolean }
   };
 
@@ -104,6 +105,7 @@ export class WpSidebar extends ComponentElement {
     this.size = null;
     this.meta = null;
     this.targets = [];
+    this.mergeMode = false;
     this.disabled = false;
   }
 
@@ -118,7 +120,7 @@ export class WpSidebar extends ComponentElement {
     return html`
       <aside class="controls-panel">
         <div class="group-box">
-          <label class="group-label">Crop format</label>
+          <label class="group-label">${this.mergeMode ? 'Merge format' : 'Crop format'}</label>
           <div class="button-grid">
             ${repeat(this.formats, (format) => format.id, (format) => html`
               <wp-button color="neutral" toggle
@@ -161,7 +163,7 @@ export class WpSidebar extends ComponentElement {
           </div>
         </div>
         <div class="action-row">
-          <wp-button color="accent" @click=${() => emit(this, 'skip-requested')}>Skip</wp-button>
+          <wp-button color="neutral" @click=${() => emit(this, 'skip-requested')}>Skip</wp-button>
           <wp-button color="neutral" @click=${() => emit(this, 'edit-requested')}>Edit</wp-button>
           <wp-button color="danger" @click=${() => emit(this, 'delete-requested')}>Delete</wp-button>
         </div>

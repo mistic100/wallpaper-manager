@@ -131,13 +131,14 @@ async function getImageMetadata(filePath) {
   return { width, height };
 }
 
-function buildTargetOutputPath(sourcePath, targetFolder) {
+function buildTargetOutputPath(sourcePath, targetFolder, imageCount = 1) {
   const sourceName = path.parse(sourcePath).name;
-  return path.join(targetFolder, `${sourceName}.jpg`);
+  const outputName = imageCount > 1 ? `${sourceName}_${imageCount}-images` : sourceName;
+  return path.join(targetFolder, `${outputName}.jpg`);
 }
 
-async function findNextAvailableOutputPath(sourcePath, targetFolder) {
-  const baseOutputPath = buildTargetOutputPath(sourcePath, targetFolder);
+async function findNextAvailableOutputPath(sourcePath, targetFolder, imageCount = 1) {
+  const baseOutputPath = buildTargetOutputPath(sourcePath, targetFolder, imageCount);
   const parsed = path.parse(baseOutputPath);
   let candidate = baseOutputPath;
   let index = 2;
@@ -187,9 +188,98 @@ async function processImage({ sourcePath, targetFolder, format, size, crop, outp
   }
 }
 
-async function checkOutputFileExists({ baseFolder, sourcePath, targetFolder }) {
+async function processMerge({ images, targetFolder, size, outputPath, baseFolder }) {
+  if (!Array.isArray(images) || images.length < 2) {
+    throw new Error('A merge requires at least two images.');
+  }
+  if (!Number.isSafeInteger(size?.width) || !Number.isSafeInteger(size?.height) || size.width < 1 || size.height < 1) {
+    throw new Error('The merge output size is invalid.');
+  }
+
+  const resolvedBase = path.resolve(baseFolder);
+  const seenPaths = new Set();
+  const imageData = [];
+  for (const item of images) {
+    if (typeof item.sourcePath !== 'string' || !item.position
+      || !Number.isFinite(item.position.x) || !Number.isFinite(item.position.y)) {
+      throw new Error('A merge image or its position is invalid.');
+    }
+
+    const sourcePath = path.resolve(item.sourcePath);
+    const relativePath = path.relative(resolvedBase, sourcePath);
+    if (path.dirname(sourcePath) !== resolvedBase || !relativePath
+      || relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+      throw new Error('Merge images must be in the configured source folder.');
+    }
+    if (seenPaths.has(sourcePath.toLowerCase())) {
+      throw new Error('A merge cannot contain the same image more than once.');
+    }
+    seenPaths.add(sourcePath.toLowerCase());
+
+    const stat = await fs.stat(sourcePath);
+    if (!stat.isFile() || !supportedExtensions.has(path.extname(sourcePath).toLowerCase())) {
+      throw new Error(`The merge source is not a supported image: ${path.basename(sourcePath)}`);
+    }
+    const meta = await getImageMetadata(sourcePath);
+    if (!meta) {
+      throw new Error(`Could not read merge source: ${path.basename(sourcePath)}`);
+    }
+    imageData.push({ sourcePath, position: item.position, meta });
+  }
+
+  const command = ['-size', `${size.width}x${size.height}`, 'xc:white'];
+  imageData.forEach(({ sourcePath, position, meta }, index) => {
+    const left = Math.round(index * size.width / imageData.length);
+    const right = Math.round((index + 1) * size.width / imageData.length);
+    const columnWidth = right - left;
+    const scale = Math.max(columnWidth / meta.width, size.height / meta.height);
+    const imageWidth = Math.round(meta.width * scale);
+    const imageHeight = Math.round(meta.height * scale);
+    const minLeft = left + columnWidth - imageWidth;
+    const maxLeft = left;
+    const minTop = Math.min(0, size.height - imageHeight);
+    const maxTop = Math.max(0, size.height - imageHeight);
+    if (position.x < minLeft - 1 || position.x > maxLeft + 1
+      || position.y < minTop - 1 || position.y > maxTop + 1) {
+      throw new Error('A merge image position is outside its column.');
+    }
+    const cropLeft = Math.max(0, Math.min(imageWidth - columnWidth, Math.round(left - position.x)));
+    const cropTop = Math.max(0, Math.min(imageHeight - size.height, Math.round(-position.y)));
+
+    command.push(
+      '(',
+      sourcePath,
+      '-strip',
+      '-background', 'white',
+      '-alpha', 'remove',
+      '-alpha', 'off',
+      '-resize', `${imageWidth}x${imageHeight}!`,
+      '-crop', `${columnWidth}x${size.height}+${cropLeft}+${cropTop}`,
+      '+repage',
+      ')',
+      '-geometry', `+${left}+0`,
+      '-composite'
+    );
+  });
+  command.push('-quality', '95', '-strip', outputPath);
+
+  await ensureFolderExists(targetFolder);
+  const magick = findMagickExecutable();
+  const result = spawnSync(magick, command, { shell: false, stdio: 'pipe' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    const details = (result.stderr || result.stdout || '').toString();
+    throw new Error(`ImageMagick failed while composing the merge: ${details}`);
+  }
+}
+
+async function checkOutputFileExists({ baseFolder, sourcePath, images, targetFolder }) {
+  const firstSourcePath = sourcePath || images?.[0]?.sourcePath;
+  if (!firstSourcePath) {
+    throw new Error('No source image was provided.');
+  }
   const cleanedTarget = path.isAbsolute(targetFolder) ? targetFolder : path.join(baseFolder, targetFolder);
-  const outputPath = buildTargetOutputPath(sourcePath, cleanedTarget);
+  const outputPath = buildTargetOutputPath(firstSourcePath, cleanedTarget, images?.length || 1);
 
   try {
     await fs.access(outputPath);
@@ -414,6 +504,7 @@ app.whenReady().then(async () => {
     return checkOutputFileExists({
       baseFolder: config.baseFolder,
       sourcePath: payload.sourcePath,
+      images: payload.images,
       targetFolder: payload.targetFolder
     });
   });
@@ -423,21 +514,33 @@ app.whenReady().then(async () => {
       throw new Error('Configuration is missing. Please set a base folder first.');
     }
 
-    const { sourcePath, targetFolder, format, size, crop, overwrite = false } = payload;
+    const { sourcePath, images, targetFolder, format, size, crop, overwrite = false } = payload;
+    const outputSourcePath = sourcePath || images?.[0]?.sourcePath;
+    if (!outputSourcePath) {
+      throw new Error('No source image was provided.');
+    }
     const cleanedTarget = path.isAbsolute(targetFolder) ? targetFolder : path.join(config.baseFolder, targetFolder);
-    const baseOutputPath = buildTargetOutputPath(sourcePath, cleanedTarget);
+    const imageCount = images?.length || 1;
+    const baseOutputPath = buildTargetOutputPath(outputSourcePath, cleanedTarget, imageCount);
     const outputExists = await fs.access(baseOutputPath).then(() => true).catch(() => false);
-    const outputPath = !overwrite && outputExists ? await findNextAvailableOutputPath(sourcePath, cleanedTarget) : baseOutputPath;
+    const outputPath = !overwrite && outputExists
+      ? await findNextAvailableOutputPath(outputSourcePath, cleanedTarget, imageCount)
+      : baseOutputPath;
 
-    await processImage({
-      sourcePath,
-      targetFolder: cleanedTarget,
-      format,
-      size,
-      crop,
-      outputPath
-    });
-    await shell.trashItem(sourcePath);
+    if (images) {
+      await processMerge({ images, targetFolder: cleanedTarget, size, outputPath, baseFolder: config.baseFolder });
+      await Promise.all(images.map(({ sourcePath: imagePath }) => shell.trashItem(imagePath)));
+    } else {
+      await processImage({
+        sourcePath,
+        targetFolder: cleanedTarget,
+        format,
+        size,
+        crop,
+        outputPath
+      });
+      await shell.trashItem(sourcePath);
+    }
     return outputPath;
   });
 

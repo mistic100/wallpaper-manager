@@ -5,7 +5,8 @@ import { ComponentElement, emit } from './shared.js';
 export class WpGallery extends ComponentElement {
   static properties = {
     images: { attribute: false },
-    currentIndex: { type: Number, attribute: 'current-index' }
+    currentIndex: { type: Number, attribute: 'current-index' },
+    selectedIndices: { attribute: false }
   };
 
   static styles = [ComponentElement.styles, css`
@@ -63,6 +64,8 @@ export class WpGallery extends ComponentElement {
     super();
     this.images = [];
     this.currentIndex = 0;
+    this.selectedIndices = [0];
+    this._selectionAnchor = 0;
   }
 
   firstUpdated() {
@@ -75,14 +78,36 @@ export class WpGallery extends ComponentElement {
     }, { passive: false });
   }
 
+  _selectImage(index, event) {
+    let indices;
+    let currentIndex = index;
+    if (event.ctrlKey) {
+      const selected = new Set(this.selectedIndices);
+      if (selected.has(index)) selected.delete(index);
+      else selected.add(index);
+      indices = [...selected].sort((a, b) => a - b);
+      if (!selected.has(index) && indices.length) currentIndex = indices[0];
+    } else if (event.shiftKey) {
+      const anchor = Math.min(this._selectionAnchor ?? this.currentIndex, this.images.length - 1);
+      const start = Math.min(anchor, index);
+      const end = Math.max(anchor, index);
+      indices = Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
+    } else {
+      this._selectionAnchor = index;
+      indices = [index];
+    }
+
+    emit(this, 'image-selected', { index: currentIndex, indices });
+  }
+
   render() {
     return html`
       <footer class="gallery-bar">
         <div class="thumbnail-strip">
           ${repeat(this.images, (image) => image.path, (image, index) => html`
             <button type="button" class="thumbnail" title=${`${index + 1}. ${image.name}`}
-              aria-label=${`Open ${image.name}`} aria-pressed=${String(index === this.currentIndex)}
-              @click=${() => emit(this, 'image-selected', { index })}>
+              aria-label=${`Open ${image.name}`} aria-pressed=${String(this.selectedIndices.includes(index))}
+              @click=${(event) => this._selectImage(index, event)}>
               <img src=${image.path} alt=${image.name} draggable="false" />
             </button>
           `)}

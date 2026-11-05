@@ -1,7 +1,7 @@
 import { css, html } from 'lit';
 import { ComponentElement, emit } from './shared.js';
-import '@icons/refresh-cw.js';
-import '@icons/settings.js';
+import '@lucide/icons/refresh-cw.js';
+import '@lucide/icons/settings.js';
 
 export class WpTopbar extends ComponentElement {
   static properties = {

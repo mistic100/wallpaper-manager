@@ -1,8 +1,8 @@
 import { css, html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { ComponentElement, emit, normalizeFolderPath, isSafeTargetPath, parseRatio } from './shared.js';
-import '@icons/x.js';
-import '@icons/trash.js';
+import '@lucide/icons/x.js';
+import '@lucide/icons/trash.js';
 
 export class WpConfigModal extends ComponentElement {
   static properties = {
@@ -177,7 +177,7 @@ export class WpConfigModal extends ComponentElement {
     this.selectedTargetFolder = '';
     this._draft = { baseFolder: '', formats: [], targetFolders: [] };
     this._ratioDrafts = [];
-    this._tab = 'baseFolder';
+    this._tab = 'general';
     this._message = '';
     this._messageTone = 'error';
   }
@@ -186,7 +186,7 @@ export class WpConfigModal extends ComponentElement {
     if (changed.has('open') && this.open) {
       this._draft = structuredClone(this.config || { baseFolder: '', formats: [], targetFolders: [] });
       this._ratioDrafts = this._draft.formats.map((format) => format.ratio?.join(':') || '');
-      this._tab = 'baseFolder';
+      this._tab = 'general';
       this._message = '';
     }
     if (changed.has('selectedBaseFolder') && this.selectedBaseFolder) {
@@ -275,7 +275,7 @@ export class WpConfigModal extends ComponentElement {
           </div>
           <div class="config-tabs" role="tablist" aria-label="Configuration sections">
             ${repeat([
-              ['baseFolder', 'Base folder'],
+              ['general', 'General'],
               ['formats', 'Formats'],
               ['targetFolders', 'Target folders']
             ], ([name]) => name, ([name, label]) => html`
@@ -285,7 +285,7 @@ export class WpConfigModal extends ComponentElement {
             `)}
           </div>
           <form id="config-form" class="config-form" @submit=${this._save}>
-            <section class="config-section config-tab-panel ${this._tab === 'baseFolder' ? 'active' : 'hidden'}">
+            <section class="config-section config-tab-panel ${this._tab === 'general' ? 'active' : 'hidden'}">
               <div class="config-section-header"><h3>Base folder</h3></div>
               <div class="base-folder-row">
                 <input type="text" readonly placeholder="Select a base folder" .value=${this._draft.baseFolder || ''} />
