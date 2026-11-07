@@ -263,17 +263,38 @@ export class WpCropStage extends ComponentElement {
   _toggleZoom(event) {
     if (!this.meta) return;
     event.preventDefault();
-    this._zoomed = !this._zoomed;
+    const zoomingIn = !this._zoomed;
+    let zoomPosition;
+    if (zoomingIn) {
+      const stage = this.renderRoot.querySelector('.crop-stage');
+      const stageBounds = stage.getBoundingClientRect();
+      const imageBounds = this.renderRoot.querySelector('.preview-image').getBoundingClientRect();
+      const imageX = clamp(event.clientX - imageBounds.left, 0, imageBounds.width)
+        / imageBounds.width * this.meta.width;
+      const imageY = clamp(event.clientY - imageBounds.top, 0, imageBounds.height)
+        / imageBounds.height * this.meta.height;
+      const cursorX = event.clientX - stageBounds.left - stage.clientLeft;
+      const cursorY = event.clientY - stageBounds.top - stage.clientTop;
+      const maxLeft = stage.clientWidth - this.meta.width;
+      const maxTop = stage.clientHeight - this.meta.height;
+      zoomPosition = {
+        left: clamp(cursorX - imageX, Math.min(0, maxLeft), Math.max(0, maxLeft)),
+        top: clamp(cursorY - imageY, Math.min(0, maxTop), Math.max(0, maxTop))
+      };
+    }
+
+    this._zoomed = zoomingIn;
     this.updateComplete.then(() => {
-      if (this._zoomed) {
-        const stage = this.renderRoot.querySelector('.crop-stage').getBoundingClientRect();
-        const image = this.renderRoot.querySelector('.preview-image');
-        const left = clamp(event.clientX - stage.left, stage.width - this.meta.width, 0);
-        const top = clamp(event.clientY - stage.top, stage.height - this.meta.height, 0);
-        this._imageStyle = { width: `${this.meta.width}px`, height: `${this.meta.height}px`, left: `${left}px`, top: `${top}px` };
+      if (zoomingIn) {
+        this._imageStyle = {
+          width: `${this.meta.width}px`,
+          height: `${this.meta.height}px`,
+          left: `${zoomPosition.left}px`,
+          top: `${zoomPosition.top}px`
+        };
         this.requestUpdate();
       }
-      emit(this, 'zoom-changed', { zoomed: this._zoomed });
+      emit(this, 'zoom-changed', { zoomed: zoomingIn });
     });
   }
 

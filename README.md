@@ -24,5 +24,6 @@ The configuration file defines:
 - The app scans only the configured folder, non-recursively.
 - Images are processed with ImageMagick, which is expected to be available on the PATH.
 - Merge collages use equal-width columns in selection order. Drag an image vertically within its column; the collage is named after the first selected image.
+- Right-click to temporarily zoom on the image.
 - Deletes go to the Windows recycle bin.
 - The Edit tries to open the file in Adobe Photoshop if it is installed.
